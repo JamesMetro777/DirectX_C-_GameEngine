@@ -1,0 +1,76 @@
+////////////////////////////////////////////////////////////////////////////////
+// Filename: Cook.ps
+////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////
+// TEXTURES //
+//////////////
+Texture2D colorTexture : register(t0);
+
+
+//////////////
+// SAMPLERS //
+//////////////
+SamplerState SampleType;
+
+
+
+//////////////
+// TYPEDEFS //
+//////////////
+struct PixelInputType
+{
+    float4 position : SV_POSITION;
+    float2 tex : TEXCOORD0;
+	float3 viewDirection :TEXCOORD2;
+	float3 lightDirection :TEXCOORD3;
+   	float3 normal : NORMAL;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel Shader
+////////////////////////////////////////////////////////////////////////////////
+float4 CookPixelShader(PixelInputType input) : SV_TARGET
+{
+	float3 lightDir;
+	float4 textureColor;
+	float4 ambient = {0.1f,0.1f,0.1f,1.0f};
+	float m = 8.0f;
+
+
+    // Sample the color texture.
+    textureColor = colorTexture.Sample(SampleType, input.tex);
+
+	float3 Normal = normalize(input.normal);
+    float3 LightDir = normalize(input.lightDirection);
+    float3 ViewDir = normalize(input.viewDirection);    
+    float4 diff = saturate(dot(Normal, LightDir)); // diffuse component
+
+  float3 H = normalize(LightDir + ViewDir);
+   float NormalDotH = dot(Normal,H);
+   float NormalDotView = dot(ViewDir,Normal);
+   float HalfDotNormal =  dot(H,Normal);
+   float ViewDotNormal = dot(Normal,ViewDir);
+   float LightDotNormal = dot(LightDir,Normal);
+   float ViewDotHalf =  dot(ViewDir,H);
+   float mCook = 3;
+   
+   float omega = dot(Normal,H);
+   
+   
+   float a = exp(-pow(tan(omega)/mCook,2));
+   float b = (4.0f*pow(mCook,2)) * pow(cos(omega),4);
+   float D = a/b;
+   
+   float F = pow((1+ ViewDotNormal),2);
+   
+   float G1 = (2.0f * HalfDotNormal * ViewDotNormal)/ViewDotHalf;
+   float G2 = (2.0f * HalfDotNormal * LightDotNormal)/ViewDotHalf;
+   float G3 = min(G1,G2);
+   float G = min(1.0f,G3);
+   
+   float4 specular = (D*F*G)/ViewDotNormal;
+    return  (textureColor * diff + specular);
+}

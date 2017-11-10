@@ -1,0 +1,61 @@
+////////////////////////////////////////////////////////////////////////////////
+// Filename: Phong.ps
+////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////
+// TEXTURES //
+//////////////
+Texture2D colorTexture : register(t0);
+
+
+//////////////
+// SAMPLERS //
+//////////////
+SamplerState SampleType;
+
+
+
+//////////////
+// TYPEDEFS //
+//////////////
+struct PixelInputType
+{
+    float4 position : SV_POSITION;
+    float2 tex : TEXCOORD0;
+	float3 viewDirection :TEXCOORD2;
+	float3 lightDirection :TEXCOORD3;
+   	float3 normal : NORMAL;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel Shader
+////////////////////////////////////////////////////////////////////////////////
+float4 PhongPixelShader(PixelInputType input) : SV_TARGET
+{
+	float3 lightDir;
+	float4 textureColor;
+	float4 ambient = {0.1f,0.1f,0.1f,1.0f};
+	float m = 8.0f;
+
+
+    // Sample the color texture.
+    textureColor = colorTexture.Sample(SampleType, input.tex);
+
+	float3 Normal = normalize(input.normal);
+    float3 LightDir = normalize(input.lightDirection);
+    float3 ViewDir = normalize(input.viewDirection);    
+    float4 diff = saturate(dot(Normal, LightDir)); // diffuse component
+
+	 // compute self-shadowing term
+    float shadow = saturate(4* diff);
+        
+    float3 Reflect = normalize(2 * diff * Normal - LightDir);  // R
+
+	 //Phong distribution
+    float4 specular = pow(saturate(dot(Reflect, ViewDir)), m);
+
+    // I = ambient + shadow * (Dcolor * N.L + (R.V)n)
+    return  shadow * (textureColor * diff + specular);
+}
